@@ -1,16 +1,15 @@
 // SPDX-License-Identifier: agpl-3.0
 pragma solidity 0.8.19;
 
-import "../../dependencies/openzeppelin/contracts/SafeMath.sol";
-import "../../dependencies/openzeppelin/contracts/Ownable.sol";
-import "../../dependencies/openzeppelin/contracts/ERC20Capped.sol";
-import "../../dependencies/governance/TreasuryOwnable.sol";
+import "../lib/openzeppelin-contracts/contracts/utils/math/SafeMath.sol";
+import "../lib/openzeppelin-contracts/contracts/access/Ownable.sol";
+import "../lib/openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Capped.sol";
+import "./FiscOwnable.sol";
 
-contract SURGE is Ownable, ERC20Capped, TreasuryOwnable {
+contract Surge is Ownable, ERC20Capped, FiscOwnable {
     using SafeMath for uint256;
 
-    uint256 public immutable mintLockTime; // no more mint amount change
-    // can mint between start time and expiration time
+    uint256 public immutable mintLockTime;
     uint256 public immutable mintStartTime;
     uint256 public immutable mintExpirationTime;
 
@@ -26,111 +25,67 @@ contract SURGE is Ownable, ERC20Capped, TreasuryOwnable {
         uint256 mintLockTime_,
         uint256 mintStartTime_,
         uint256 mintExpirationTime_,
-        address treasury_
+        address fisc_
     )
         Ownable()
-        TreasuryOwnable(treasury_)
+        FiscOwnable(fisc_)
         ERC20("SURGE", "SURGE")
         ERC20Capped(333333333000000000000000000)
     {
         require(
             mintLockTime_ < mintStartTime_,
-            "SURGE: Mint should not start before mint amounts are locked"
+            "Surge: Mint should not start before the amounts have been locked."
         );
         require(
             mintStartTime_ < mintExpirationTime_,
-            "SURGE: Mint Should not expire before it starts"
+            "Surge: Mint should not expire before it has started."
         );
         mintLockTime = mintLockTime_;
         mintStartTime = mintStartTime_;
         mintExpirationTime = mintExpirationTime_;
 
-        _mints[treasury_] = 333333333000000000000000000;
+        _mints[fisc_] = 333333333000000000000000000;
     }
 
-    function _transfer(
-        address sender,
-        address recipient,
-        uint256 amount
-    ) internal override {
-        require(
-            block.timestamp >= mintStartTime,
-            "SURGE: Cannot transfer before mint starts"
-        );
-        super._transfer(sender, recipient, amount);
-    }
-
-    function transferTreasury(
-        address newTreasury
-    ) external override onlyTreasury {
-        require(
-            newTreasury != address(0),
-            "TreasuryOwnable: new treasury is the zero address"
-        );
-        // transfer mintable amount
-        uint256 mintAmount = _mints[treasury()];
-        if (mintAmount > 0) {
-            delete _mints[treasury()];
-            _mints[newTreasury] = _mints[newTreasury].add(mintAmount);
-        }
-        _transferTreasury(newTreasury);
-    }
-
-    function mintOf(address account) public view returns (uint256) {
+    // remove this after testing
+    function getMintAmount(address account) external view returns (uint256) {
         return _mints[account];
     }
 
-    function mint() external returns (bool) {
+    function addMint(address account, uint256 amount) external onlyOwner {
         require(
-            block.timestamp >= mintStartTime,
-            "SURGE: Cannot mint before mint started"
+            block.timestamp < mintLockTime,
+            "Surge: Cannot add amount after mint has been locked."
         );
+        require(amount > 0, "Surge: Cannot add zero to mint.");
         require(
-            block.timestamp < mintExpirationTime,
-            "SURGE: Cannot mint after mint expired"
-        );
-
-        address sender = _msgSender();
-        uint256 mintAmount = _mints[sender];
-        require(mintAmount > 0, "SURGE: nothing to mint");
-
-        delete _mints[sender];
-        _mint(sender, mintAmount);
-        emit Mint(sender, sender, mintAmount);
-        return true;
-    }
-
-    function mintByTreasury(
-        address account
-    ) external onlyTreasury returns (bool) {
-        require(
-            block.timestamp >= mintExpirationTime,
-            "SURGE: No expired token for treasury to mint before mint expired"
+            account != fisc(),
+            "Surge: Should not adjust Fisc mint amount."
         );
 
-        uint256 mintAmount = _mints[account];
-        require(mintAmount > 0, "SURGE: nothing to mint");
-
-        delete _mints[account];
-        _mint(treasury(), mintAmount);
-        emit Mint(treasury(), account, mintAmount);
-        return true;
+        // adjust fisc's mintable amount
+        _mints[fisc()] = _mints[fisc()].sub(
+            amount,
+            "Surge: Amount exceeds maximum allowance."
+        );
+        // record new amount
+        _mints[account] = _mints[account].add(amount);
     }
 
     function setMint(address account, uint256 amount) external onlyOwner {
         require(
             block.timestamp < mintLockTime,
-            "SURGE: Cannot set mint amount after mint locked"
+            "Surge: Cannot set mint amount after mint has been locked."
         );
         require(
-            account != treasury(),
-            "SURGE: Should not adjust mint amount for treasury"
+            account != fisc(),
+            "Surge: Should not adjust fisc mint amount."
         );
         uint256 currentAmount = _mints[account];
-        // adjust treasury's mintable amount
-        _mints[treasury()] = _mints[treasury()].add(currentAmount).sub(
+        // adjust fisc's mintable amount
+        _mints[fisc()] = _mints[fisc()].add(currentAmount).sub(
             amount,
-            "SURGE: amount exceeds maximum allowance"
+            "Surge: Amount exceeds maximum allowance."
         );
         // record new amount
         if (amount == 0) {
@@ -146,21 +101,21 @@ contract SURGE is Ownable, ERC20Capped, TreasuryOwnable {
     ) external onlyOwner {
         require(
             block.timestamp < mintLockTime,
-            "SURGE: Cannot set mint amount after mint locked"
+            "Surge: Cannot set mint amount after mint has been locked."
         );
-        require(accounts.length == amounts.length, "SURGE: input mismatch");
+        require(accounts.length == amounts.length, "Surge: Input mismatch.");
         for (uint256 i = 0; i < accounts.length; i++) {
             address account = accounts[i];
             uint256 amount = amounts[i];
             require(
-                account != treasury(),
-                "SURGE: Should not adjust mint amount for treasury"
+                account != fisc(),
+                "Surge: Should not adjust fisc mint amount."
             );
             uint256 currentAmount = _mints[account];
-            // adjust treasury's mintable amount
-            _mints[treasury()] = _mints[treasury()].add(currentAmount).sub(
+            // adjust fisc's mintable amount
+            _mints[fisc()] = _mints[fisc()].add(currentAmount).sub(
                 amount,
-                "SURGE: amount exceeds maximum allowance"
+                "Surge: Amount exceeds maximum allowance."
             );
             // record new amount
             if (amount == 0) {
@@ -171,23 +126,68 @@ contract SURGE is Ownable, ERC20Capped, TreasuryOwnable {
         }
     }
 
-    function addMint(address account, uint256 amount) external onlyOwner {
+    function mintOf(address account) public view returns (uint256) {
+        return _mints[account];
+    }
+
+    function mint() external returns (bool) {
         require(
-            block.timestamp < mintLockTime,
-            "SURGE: Cannot add mint amount after mint locked"
+            block.timestamp >= mintStartTime,
+            "Surge: Cannot mint before the mint has started."
         );
-        require(amount > 0, "SURGE: Meaningless to add zero amount");
         require(
-            account != treasury(),
-            "SURGE: Should not adjust mint amount for treasury"
+            block.timestamp < mintExpirationTime,
+            "Surge: Cannot mint after the mint has expired."
         );
 
-        // adjust treasury's mintable amount
-        _mints[treasury()] = _mints[treasury()].sub(
-            amount,
-            "SURGE: amount exceeds maximum allowance"
+        address sender = _msgSender();
+        uint256 mintAmount = _mints[sender];
+        require(mintAmount > 0, "Surge: Nothing to mint.");
+
+        delete _mints[sender];
+        _mint(sender, mintAmount);
+        emit Mint(sender, sender, mintAmount);
+        return true;
+    }
+
+    function mintFromFisc(address account) external onlyFisc returns (bool) {
+        require(
+            block.timestamp >= mintExpirationTime,
+            "Surge: Mint has expired."
         );
-        // record new amount
-        _mints[account] = _mints[account].add(amount);
+
+        uint256 mintAmount = _mints[account];
+        require(mintAmount > 0, "Surge: Nothing to mint.");
+
+        delete _mints[account];
+        _mint(fisc(), mintAmount);
+        emit Mint(fisc(), account, mintAmount);
+        return true;
+    }
+
+    function _transfer(
+        address sender,
+        address recipient,
+        uint256 amount
+    ) internal override {
+        require(
+            block.timestamp >= mintStartTime,
+            "Surge: Cannot transfer before the mint has started."
+        );
+        super._transfer(sender, recipient, amount);
+    }
+
+    function transferFisc(address newFisc) external override onlyFisc {
+        require(
+            newFisc != address(0),
+            "Fisc: Fisc cannot be the zero address."
+        );
+        // transfer mintable amount
+        uint256 mintAmount = _mints[fisc()];
+        if (mintAmount > 0) {
+            delete _mints[fisc()];
+            _mints[newFisc] = _mints[newFisc].add(mintAmount);
+        }
+        _transferFisc(newFisc);
     }
 }
