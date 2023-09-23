@@ -31,7 +31,7 @@ contract BribeVault is AccessControl {
     bytes32 public constant DEPOSITOR_ROLE = keccak256("DEPOSITOR_ROLE");
 
     uint256 public fee; // 5000 = 0.5%
-    address public feeRecipient; // Protocol treasury
+    address public feeRecipient; // Protocol Treasury
     address public distributor; // RewardDistributor contract
 
     // Bribe identifiers mapped to Bribe structs
@@ -68,12 +68,10 @@ contract BribeVault is AccessControl {
     );
     event EmergencyWithdrawal(address indexed token, uint256 amount, address admin);
 
-    /**
-     * @param  _fee           uint256  Fee
-     *     @param  _feeMax        unt256   Maximum fee
-     *     @param  _feeRecipient  address  Fee recipient
-     *     @param  _distributor   address  Reward distributor address
-     */
+    //  @param  _fee           uint256  fee
+    //  @param  _feeMax        unt256   maximum fee
+    //  @param  _feeRecipient  address  fee recipient
+    //  @param  _distributor   address  reward distributor address
     constructor(uint256 _fee, uint256 _feeMax, address _feeRecipient, address _distributor) {
         // Max. fee shouldn't be >= 50%
         if (_feeMax >= FEE_DIVISOR / 2) revert Errors.InvalidMaxFee();
@@ -89,20 +87,16 @@ contract BribeVault is AccessControl {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
-    /**
-     * @notice Grant the depositor role to an address
-     *     @param  depositor  address  Address to grant the depositor role
-     */
+    // @notice Grant the depositor role to an address
+    // @param  depositor  address  Address to grant the depositor role
     function grantDepositorRole(address depositor) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (depositor == address(0)) revert Errors.InvalidAddress();
 
         _grantRole(DEPOSITOR_ROLE, depositor);
     }
 
-    /**
-     * @notice Revoke the depositor role from an address
-     *     @param  depositor  address  Address to revoke the depositor role
-     */
+    // @notice Revoke the depositor role from an address
+    // @param  depositor  address  Address to revoke the depositor role
     function revokeDepositorRole(address depositor) external onlyRole(DEFAULT_ADMIN_ROLE) {
         // Keeping this redundant check to avoid emitting an event if no role is revoked
         if (!hasRole(DEPOSITOR_ROLE, depositor)) revert Errors.NotDepositor();
@@ -110,10 +104,8 @@ contract BribeVault is AccessControl {
         _revokeRole(DEPOSITOR_ROLE, depositor);
     }
 
-    /**
-     * @notice Set the fee collected by the protocol
-     *     @param  _fee  uint256  Fee
-     */
+    // @notice Set the fee collected by the protocol
+    // @param  _fee  uint256  Fee
     function setFee(uint256 _fee) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (_fee > FEE_MAX) revert Errors.InvalidFee();
 
@@ -122,10 +114,8 @@ contract BribeVault is AccessControl {
         emit SetFee(_fee);
     }
 
-    /**
-     * @notice Set the protocol address where fees will be transferred
-     *     @param  _feeRecipient  address  Fee recipient
-     */
+    // @notice Set the protocol address where fees will be transferred
+    // @param  _feeRecipient  address  Fee recipient
     function setFeeRecipient(address _feeRecipient) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (_feeRecipient == address(0)) revert Errors.InvalidFeeRecipient();
 
@@ -134,10 +124,8 @@ contract BribeVault is AccessControl {
         emit SetFeeRecipient(_feeRecipient);
     }
 
-    /**
-     * @notice Set the RewardDistributor contract address
-     *     @param  _distributor  address  Distributor
-     */
+    // @notice Set the RewardDistributor contract address
+    // @param  _distributor  address  Distributor
     function setDistributor(address _distributor) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (_distributor == address(0)) revert Errors.InvalidDistributor();
 
@@ -146,14 +134,13 @@ contract BribeVault is AccessControl {
         emit SetDistributor(_distributor);
     }
 
-    /**
-     * @notice Generate the BribeVault identifier based on a scheme
-     *     @param  _market           address  Market that originated the bribe
-     *     @param  _proposal         bytes32  Proposal
-     *     @param  _proposalDeadline uint256  Proposal deadline
-     *     @param  _token            address  Token
-     *     @return id                bytes32  BribeVault identifier
-     */
+    // @notice Generate the BribeVault identifier based on a scheme
+    // @param  _market           address  Market that originated the bribe
+    // @param  _proposal         bytes32  Proposal
+    // @param  _proposalDeadline uint256  Proposal deadline
+    // @param  _token            address  Token
+    // @return id                bytes32  BribeVault identifier
+    
     function generateBribeVaultIdentifier(address _market, bytes32 _proposal, uint256 _proposalDeadline, address _token)
         public
         pure
@@ -270,22 +257,32 @@ contract BribeVault is AccessControl {
                 rewardToBribes[generateRewardIdentifier(msg.sender, _dp.token, deadline)].push(bribeIdentifier);
             }
 
-            emit DepositBribe(
-                msg.sender,
-                _dp.proposal,
-                deadline,
-                _dp.token,
-                _dp.briber,
-                bribeAmount,
-                b.amount,
-                _dp.maxTokensPerVote,
-                i
-            );
+            emitDepositBribe(_dp, bribeAmount, deadline, bribeIdentifier, i);
 
             unchecked {
                 ++i;
             }
         } while (i < _dp.periods);
+    }
+
+    function emitDepositBribe(
+        Common.DepositBribeParams calldata _dp,
+        uint256 bribeAmount,
+        uint256 deadline,
+        bytes32 bribeIdentifier,
+        uint256 i
+    ) internal {
+        emit DepositBribe(
+            msg.sender,
+            _dp.proposal,
+            deadline,
+            _dp.token,
+            _dp.briber,
+            bribeAmount,
+            bribes[bribeIdentifier].amount,
+            _dp.maxTokensPerVote,
+            i
+        );
     }
 
     /**
