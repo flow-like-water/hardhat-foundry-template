@@ -31,14 +31,23 @@ contract RewardDistributor is AccessControl, ReentrancyGuard, Pausable {
 
     // Maps each of the identifiers to its reward metadata
     mapping(bytes32 => Reward) public rewards;
-    // Tracks the amount of claimed reward for the specified identifier+account
+    // Tracks the amount of claimed reward for the specified identifier and account
     mapping(bytes32 => mapping(address => uint256)) public claimed;
     // Used for calculating the timestamp on which rewards can be claimed after an update
     uint256 public activeTimerDuration;
 
-    event RewardClaimed(bytes32 indexed identifier, address indexed token, address indexed account, uint256 amount);
+    event RewardClaimed(
+        bytes32 indexed identifier,
+        address indexed token,
+        address indexed account,
+        uint256 amount
+    );
     event RewardMetadataUpdated(
-        bytes32 indexed identifier, address indexed token, bytes32 merkleRoot, bytes32 proof, uint256 activeAt
+        bytes32 indexed identifier,
+        address indexed token,
+        bytes32 merkleRoot,
+        bytes32 proof,
+        uint256 activeAt
     );
     event SetActiveTimerDuration(uint256 duration);
 
@@ -51,13 +60,20 @@ contract RewardDistributor is AccessControl, ReentrancyGuard, Pausable {
      * @notice Claim rewards based on the specified metadata
      *     @param  _claims  Claim[] List of claim metadata
      */
-    function claim(Claim[] calldata _claims) external nonReentrant whenNotPaused {
+    function claim(
+        Claim[] calldata _claims
+    ) external nonReentrant whenNotPaused {
         uint256 cLen = _claims.length;
 
         if (cLen == 0) revert Errors.InvalidArray();
 
-        for (uint256 i; i < cLen;) {
-            _claim(_claims[i].identifier, _claims[i].account, _claims[i].amount, _claims[i].merkleProof);
+        for (uint256 i; i < cLen; ) {
+            _claim(
+                _claims[i].identifier,
+                _claims[i].account,
+                _claims[i].amount,
+                _claims[i].merkleProof
+            );
 
             unchecked {
                 ++i;
@@ -69,17 +85,16 @@ contract RewardDistributor is AccessControl, ReentrancyGuard, Pausable {
      * @notice Update rewards metadata
      *     @param  _distributions  Distribution[] List of reward distribution details
      */
-    function updateRewardsMetadata(Common.Distribution[] calldata _distributions)
-        external
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
+    function updateRewardsMetadata(
+        Common.Distribution[] calldata _distributions
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         uint256 dLen = _distributions.length;
 
         if (dLen == 0) revert Errors.InvalidDistribution();
 
         uint256 activeAt = block.timestamp + activeTimerDuration;
 
-        for (uint256 i; i < dLen;) {
+        for (uint256 i; i < dLen; ) {
             // Update the metadata and start the timer until the rewards will be active/claimable
             Common.Distribution calldata distribution = _distributions[i];
             Reward storage reward = rewards[distribution.identifier];
@@ -93,7 +108,11 @@ contract RewardDistributor is AccessControl, ReentrancyGuard, Pausable {
             }
 
             emit RewardMetadataUpdated(
-                distribution.identifier, distribution.token, distribution.merkleRoot, distribution.proof, activeAt
+                distribution.identifier,
+                distribution.token,
+                distribution.merkleRoot,
+                distribution.proof,
+                activeAt
             );
 
             unchecked {
@@ -119,7 +138,9 @@ contract RewardDistributor is AccessControl, ReentrancyGuard, Pausable {
      * @notice Set the active timer duration
      *     @param  _duration  uint256  Timer duration
      */
-    function changeActiveTimerDuration(uint256 _duration) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function changeActiveTimerDuration(
+        uint256 _duration
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _setActiveTimerDuration(_duration);
     }
 
@@ -130,7 +151,12 @@ contract RewardDistributor is AccessControl, ReentrancyGuard, Pausable {
      *     @param  _amount       uint256    Reward amount
      *     @param  _merkleProof  bytes32[]  Merkle proof
      */
-    function _claim(bytes32 _identifier, address _account, uint256 _amount, bytes32[] calldata _merkleProof) private {
+    function _claim(
+        bytes32 _identifier,
+        address _account,
+        uint256 _amount,
+        bytes32[] calldata _merkleProof
+    ) private {
         Reward memory reward = rewards[_identifier];
 
         if (reward.merkleRoot == 0) revert Errors.InvalidMerkleRoot();
@@ -141,7 +167,9 @@ contract RewardDistributor is AccessControl, ReentrancyGuard, Pausable {
         // Verify the merkle proof
         if (
             !MerkleProof.verifyCalldata(
-                _merkleProof, reward.merkleRoot, keccak256(abi.encodePacked(_account, lifeTimeAmount))
+                _merkleProof,
+                reward.merkleRoot,
+                keccak256(abi.encodePacked(_account, lifeTimeAmount))
             )
         ) revert Errors.InvalidProof();
 

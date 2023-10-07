@@ -26,9 +26,7 @@ contract RewardSwapper is Ownable2Step {
     event SetRewardDistributor(address indexed rewardDistributor);
     event BribeTransferred(address indexed token, uint256 totalAmount);
 
-    /**
-     * @notice Modifier to check caller is operator
-     */
+    //    @notice Modifier to check caller is operator
     modifier onlyOperator() {
         if (msg.sender != operator) revert Errors.NotAuthorized();
         _;
@@ -37,7 +35,11 @@ contract RewardSwapper is Ownable2Step {
     //-----------------------//
     //       Constructor     //
     //-----------------------//
-    constructor(address _rewardDistributor, address _rewardHarvester, address _operator) {
+    constructor(
+        address _rewardDistributor,
+        address _rewardHarvester,
+        address _operator
+    ) {
         _setRewardDistributor(_rewardDistributor);
         _setRewardHarvester(_rewardHarvester);
         _setOperator(_operator);
@@ -47,11 +49,11 @@ contract RewardSwapper is Ownable2Step {
     //   External Functions  //
     //-----------------------//
 
-    /**
-     * @notice Executes swaps via DEX
-     * @param  _claimSwapData  Common.ClaimAndSwapData[]  The data for the claims+swaps
-     */
-    function claimSwapAndDepositReward(Common.ClaimAndSwapData[] calldata _claimSwapData) external onlyOperator {
+    //    @notice Executes swaps via DEX
+    //    @param  _claimSwapData  Common.ClaimAndSwapData[]  The data for the claims and swaps
+    function claimSwapAndDepositReward(
+        Common.ClaimAndSwapData[] calldata _claimSwapData
+    ) external onlyOperator {
         uint256 cLen = _claimSwapData.length;
 
         if (cLen == 0) revert Errors.InvalidArray();
@@ -65,7 +67,7 @@ contract RewardSwapper is Ownable2Step {
         );
 
         // Claim rewards
-        for (uint256 i; i < cLen;) {
+        for (uint256 i; i < cLen; ) {
             claimData[i].identifier = _claimSwapData[i].rwIdentifier;
             claimData[i].account = address(this);
             claimData[i].amount = _claimSwapData[i].fromAmount;
@@ -79,7 +81,7 @@ contract RewardSwapper is Ownable2Step {
         rewardDistributor.claim(claimData);
 
         // Swap reward tokens to default token
-        for (uint256 i; i < cLen;) {
+        for (uint256 i; i < cLen; ) {
             _swap(_claimSwapData[i]);
 
             unchecked {
@@ -87,11 +89,18 @@ contract RewardSwapper is Ownable2Step {
             }
         }
 
-        uint256 amountClaimed = defaultToken.balanceOf(address(this)) - initalAmount;
+        uint256 amountClaimed = defaultToken.balanceOf(address(this)) -
+            initalAmount;
 
         // Approve reward harvester if needed
-        if (defaultToken.allowance(address(this), address(rewardHarvester)) < amountClaimed) {
-            defaultToken.safeApprove(address(rewardHarvester), type(uint256).max);
+        if (
+            defaultToken.allowance(address(this), address(rewardHarvester)) <
+            amountClaimed
+        ) {
+            defaultToken.safeApprove(
+                address(rewardHarvester),
+                type(uint256).max
+            );
         }
 
         // Deposit reward
@@ -100,26 +109,21 @@ contract RewardSwapper is Ownable2Step {
         emit BribeTransferred(address(defaultToken), amountClaimed);
     }
 
-    /**
-     * @notice Change the operator
-     *     @param  _operator  address  New operator address
-     */
+    //     @notice Change the operator
+    //     @param  _operator : address : new operator address
     function changeOperator(address _operator) external onlyOwner {
         _setOperator(_operator);
     }
 
-    /**
-     * @notice Change the reward harvester address
-     *     @param  _harvester  address  New harvester address
-     */
+    //    @notice Change the RewardHarvester address
+    //    @param  _harvester : address : new RewardHarvester address
     function changeRewardHarvester(address _harvester) external onlyOwner {
         _setRewardHarvester(_harvester);
     }
 
-    /**
-     * @notice Change the reward distributor address
-     *     @param  _distributor  address  New distributor address
-     */
+    //    @notice Change the RewardDistributor address
+    //    @param  _distributor : address : new RewardDistributor address
+    //
     function changeRewardDistributor(address _distributor) external onlyOwner {
         _setRewardDistributor(_distributor);
     }
@@ -128,10 +132,8 @@ contract RewardSwapper is Ownable2Step {
     //   Internal Functions  //
     //-----------------------//
 
-    /**
-     * @dev    Internal to set the operator
-     *     @param  _operator  address  Operator address
-     */
+    //    @dev    Internal to set the operator
+    //    @param  _operator : address : operator address
     function _setOperator(address _operator) internal {
         if (_operator == address(0)) revert Errors.InvalidAddress();
 
@@ -140,10 +142,8 @@ contract RewardSwapper is Ownable2Step {
         emit SetOperator(_operator);
     }
 
-    /**
-     * @dev    Internal to set the reward harvester
-     *     @param  _harvester  address  Reward Harvester address
-     */
+    //    @dev    Internal to set the RewardHarvester
+    //    @param  _harvester : address : RewardHarvester address
     function _setRewardHarvester(address _harvester) internal {
         if (_harvester == address(0)) revert Errors.InvalidAddress();
 
@@ -152,10 +152,8 @@ contract RewardSwapper is Ownable2Step {
         emit SetRewardHarvester(_harvester);
     }
 
-    /**
-     * @dev    Internal to set the reward distributor
-     *     @param  _distributor  address  Distributor address
-     */
+    //    @dev    Internal to set the RewardDistributor
+    //    @param  _distributor : address : RewardDistributor address
     function _setRewardDistributor(address _distributor) internal {
         if (_distributor == address(0)) revert Errors.InvalidAddress();
 
@@ -164,17 +162,15 @@ contract RewardSwapper is Ownable2Step {
         emit SetRewardDistributor(_distributor);
     }
 
-    /**
-     * @notice Executes a sequence of swaps via DEX
-     * @param  _swapData       Common.SwapData  The data for the swaps
-     * @return receivedAmount  uint256          The final amount of the toToken received
-     */
-    function _swap(Common.ClaimAndSwapData memory _swapData) internal returns (uint256 receivedAmount) {
+    //    @notice Executes a sequence of swaps via DEX
+    //    @param  _swapData      : Common.SwapData : the data for the swaps
+    //    @return receivedAmount : uint256         : the final amount of the toToken received
+    function _swap(
+        Common.ClaimAndSwapData memory _swapData
+    ) internal returns (uint256 receivedAmount) {
         if (
-            !(
-                _swapData.callees.length == _swapData.callLengths.length
-                    && _swapData.callees.length == _swapData.values.length
-            )
+            !(_swapData.callees.length == _swapData.callLengths.length &&
+                _swapData.callees.length == _swapData.values.length)
         ) {
             revert Errors.ExchangeDataArrayMismatch();
         }
@@ -193,16 +189,20 @@ contract RewardSwapper is Ownable2Step {
         if (calleesLength == 0) revert Errors.InvalidArray();
 
         bytes4 transferFromSelector = IERC20.transferFrom.selector;
-        uint256 initialAmount = IERC20(_swapData.toToken).balanceOf(address(this));
+        uint256 initialAmount = IERC20(_swapData.toToken).balanceOf(
+            address(this)
+        );
 
         uint256 currentDataStartIndex = 0;
-        for (uint256 i; i < calleesLength;) {
+        for (uint256 i; i < calleesLength; ) {
             // Check if the call is a transferFrom call
             // protect caller from transferring more than `fromAmount`
             {
                 bytes32 selector;
                 assembly {
-                    selector := mload(add(exchangeData, add(currentDataStartIndex, 32)))
+                    selector := mload(
+                        add(exchangeData, add(currentDataStartIndex, 32))
+                    )
                 }
                 if (bytes4(selector) == transferFromSelector) {
                     revert Errors.TransferFromCall();
@@ -231,10 +231,8 @@ contract RewardSwapper is Ownable2Step {
         }
     }
 
-    /**
-     * @dev Source take from GNOSIS MultiSigWallet
-     * @dev https://github.com/gnosis/MultiSigWallet/blob/master/contracts/MultiSigWallet.sol
-     */
+    //    @dev Source take from GNOSIS MultiSigWallet
+    //    @dev https://github.com/gnosis/MultiSigWallet/blob/master/contracts/MultiSigWallet.sol
     function _externalCall(
         address _destination,
         uint256 _value,
@@ -248,16 +246,15 @@ contract RewardSwapper is Ownable2Step {
             // (0x40 is where "free memory" pointer is stored by convention)
 
             let d := add(_data, 32) // First 32 bytes are the padded length of data, so exclude that
-            result :=
-                call(
-                    gas(),
-                    _destination,
-                    _value,
-                    add(d, _dataOffset),
-                    _dataLength, // Size of the input (in bytes) - this is what fixes the padding problem
-                    x,
-                    0 // Output is ignored, therefore the output size is zero
-                )
+            result := call(
+                gas(),
+                _destination,
+                _value,
+                add(d, _dataOffset),
+                _dataLength, // Size of the input (in bytes) - this is what fixes the padding problem
+                x,
+                0 // Output is ignored, therefore the output size is zero
+            )
         }
         return result;
     }

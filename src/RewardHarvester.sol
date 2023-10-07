@@ -48,9 +48,18 @@ contract RewardHarvester is Ownable2Step {
     event FeesCollected(address indexed token, uint256 amount);
     event BribeTransferred(address indexed token, uint256 totalAmount);
     event RewardClaimed(
-        address indexed token, address indexed account, uint256 amount, uint256 postFeeAmount, address receiver
+        address indexed token,
+        address indexed account,
+        uint256 amount,
+        uint256 postFeeAmount,
+        address receiver
     );
-    event RewardMetadataUpdated(address indexed token, bytes32 merkleRoot, bytes32 proof, uint256 activeAt);
+    event RewardMetadataUpdated(
+        address indexed token,
+        bytes32 merkleRoot,
+        bytes32 proof,
+        uint256 activeAt
+    );
     event DefaultTokenUpdated(address indexed token);
     event SetOperator(address indexed operator);
     event SetClaimer(address indexed claimer);
@@ -60,9 +69,8 @@ contract RewardHarvester is Ownable2Step {
     //-----------------------//
     //       Modifiers       //
     //-----------------------//
-    /**
-     * @notice Modifier to check caller is operator
-     */
+
+    //    @notice Modifier to check whether a caller is the operator
     modifier onlyOperatorOrOwner() {
         if (msg.sender != operator && msg.sender != owner()) {
             revert Errors.NotAuthorized();
@@ -70,9 +78,7 @@ contract RewardHarvester is Ownable2Step {
         _;
     }
 
-    /**
-     * @notice Modifier to check caller is operator or reward swapper
-     */
+    //    @notice Modifier to check whether a caller is the operator or reward swapper
     modifier onlyOperatorOrRewardSwapper() {
         if (msg.sender != operator && msg.sender != rewardSwapper) {
             revert Errors.NotAuthorized();
@@ -81,9 +87,13 @@ contract RewardHarvester is Ownable2Step {
     }
 
     //-----------------------//
-    //       Constructor     //
+    //      Constructor      //
     //-----------------------//
-    constructor(address _rewardSwapper, address _operator, address _defaultToken) {
+    constructor(
+        address _rewardSwapper,
+        address _operator,
+        address _defaultToken
+    ) {
         _setDefaultToken(_defaultToken);
         _setOperator(_operator);
         _setRewardSwapper(_rewardSwapper);
@@ -103,25 +113,21 @@ contract RewardHarvester is Ownable2Step {
         emit MemberJoined(msg.sender);
     }
 
-    /**
-     * @notice Leave harvester
-     */
+    // @notice Leave harvester
     function leave() external {
         isMember[msg.sender] = false;
 
         emit MemberLeft(msg.sender);
     }
 
-    /**
-     * @notice Claim rewards based on the specified metadata
-     *     @dev    Can only be called by the claimer contract
-     *     @param  _token        address    Token to claim rewards
-     *     @param  _account      address    Account to claim rewards
-     *     @param  _amount       uint256    Amount of rewards to claim
-     *     @param  _merkleProof  bytes32[]  Merkle proof of the claim
-     *     @param  _fee          uint256    Claim fee
-     *     @param  _receiver     address    Receiver of the rewards
-     */
+    //    @notice Claim rewards based on the specified metadata
+    //    @dev    Can only be called by the claimer contract
+    //    @param  _token       : address   : token to claim rewards
+    //    @param  _account     : address   : account to claim rewards
+    //    @param  _amount      : uint256   : amount of rewards to claim
+    //    @param  _merkleProof : bytes32[] : merkle proof of the claim
+    //    @param  _fee         : uint256   : claim fee
+    //    @param  _receiver    : address   : receiver of the rewards
     function claim(
         address _token,
         address _account,
@@ -149,7 +155,9 @@ contract RewardHarvester is Ownable2Step {
         // Verify the merkle proof
         if (
             !MerkleProof.verifyCalldata(
-                _merkleProof, reward.merkleRoot, keccak256(abi.encodePacked(_account, lifeTimeAmount))
+                _merkleProof,
+                reward.merkleRoot,
+                keccak256(abi.encodePacked(_account, lifeTimeAmount))
             )
         ) revert Errors.InvalidProof();
 
@@ -161,11 +169,11 @@ contract RewardHarvester is Ownable2Step {
         emit RewardClaimed(_token, _account, _amount, postFeeAmount, _receiver);
     }
 
-    /**
-     * @notice Deposit `defaultToken` to this contract
-     *     @param  _amount  uint256  Amount of `defaultToken` to deposit
-     */
-    function depositReward(uint256 _amount) external onlyOperatorOrRewardSwapper {
+    //    @notice Deposit `defaultToken` to this contract
+    //    @param  _amount : uint256 : amount of `defaultToken` to deposit
+    function depositReward(
+        uint256 _amount
+    ) external onlyOperatorOrRewardSwapper {
         if (_amount == 0) revert Errors.InvalidAmount();
 
         IERC20 token = IERC20(defaultToken);
@@ -174,19 +182,21 @@ contract RewardHarvester is Ownable2Step {
 
         token.safeTransferFrom(msg.sender, address(this), _amount);
 
-        emit BribeTransferred(defaultToken, token.balanceOf(address(this)) - initialAmount);
+        emit BribeTransferred(
+            defaultToken,
+            token.balanceOf(address(this)) - initialAmount
+        );
     }
 
-    /**
-     * @notice Update rewards metadata
-     *     @param  _token       address  Token to update rewards metadata
-     *     @param  _merkleRoot  bytes32  Merkle root of the rewards
-     *     @param  _hashedData  bytes32  Hashed data of the rewards
-     */
-    function updateRewardsMetadata(address _token, bytes32 _merkleRoot, bytes32 _hashedData)
-        external
-        onlyOperatorOrOwner
-    {
+    //    @notice Update rewards metadata
+    //    @param  _token      : address : token to update rewards metadata
+    //    @param  _merkleRoot : bytes32 : merkle root of the rewards
+    //    @param  _hashedData : bytes32 : hashed reward data
+    function updateRewardsMetadata(
+        address _token,
+        bytes32 _merkleRoot,
+        bytes32 _hashedData
+    ) external onlyOperatorOrOwner {
         if (_token == address(0)) revert Errors.InvalidToken();
         if (_merkleRoot == 0) revert Errors.InvalidMerkleRoot();
 
@@ -200,10 +210,8 @@ contract RewardHarvester is Ownable2Step {
         emit RewardMetadataUpdated(_token, _merkleRoot, _hashedData, activeAt);
     }
 
-    /**
-     * @notice Collect fees
-     *     @param  _token  address  Token to collect fees
-     */
+    //    @notice Collect fees
+    //    @param  _token : address : token to collect fees
     function collectFees(address _token) external onlyOwner {
         uint256 amount = feesCollected[_token];
         if (amount == 0) revert Errors.InvalidAmount();
@@ -214,34 +222,29 @@ contract RewardHarvester is Ownable2Step {
         emit FeesCollected(_token, amount);
     }
 
-    /**
-     * @notice Change the operator
-     *     @param  _operator  address  New operator address
-     */
+    //    @notice Change the operator
+    //    @param  _operator : address : new operator address
     function changeOperator(address _operator) external onlyOwner {
         _setOperator(_operator);
     }
 
-    /**
-     * @notice Change the `defaultToken`
-     *     @param  _newToken  address  New default token address
-     */
+    //    @notice Change the `defaultToken`
+    //    @param  _newToken : address : new default token address
+    //
     function changeDefaultToken(address _newToken) external onlyOwner {
         _setDefaultToken(_newToken);
     }
 
-    /**
-     * @notice Change the RewardSwapper contract
-     *     @param  _newSwapper  address  New reward swapper address
-     */
+    //    @notice Change the RewardSwapper contract
+    //    @param  _newSwapper : address : new reward swapper address
+    //
     function changeRewardSwapper(address _newSwapper) external onlyOwner {
         _setRewardSwapper(_newSwapper);
     }
 
-    /**
-     * @notice Change claimer address
-     *     @param  _claimer  address  New claimer address
-     */
+    //    @notice Change claimer address
+    //    @param  _claimer : address : new claimer address
+    //
     function changeClaimer(address _claimer) external onlyOwner {
         if (_claimer == address(0)) revert Errors.InvalidAddress();
 
@@ -250,10 +253,9 @@ contract RewardHarvester is Ownable2Step {
         emit SetClaimer(_claimer);
     }
 
-    /**
-     * @notice Set the active timer duration
-     *     @param  _duration  uint256  Timer duration
-     */
+    //    @notice Set the active timer duration
+    //    @param  _duration : uint256 : timer duration
+    //
     function changeActiveTimerDuration(uint256 _duration) external onlyOwner {
         _setActiveTimerDuration(_duration);
     }
@@ -261,10 +263,10 @@ contract RewardHarvester is Ownable2Step {
     //-----------------------//
     //   Internal Functions  //
     //-----------------------//
-    /**
-     * @dev    Internal to set the default token
-     *     @param  _newToken  address  Token address
-     */
+
+    //    @dev    Internal to set the default token
+    //    @param  _newToken : address : token address
+    //
     function _setDefaultToken(address _newToken) internal {
         if (_newToken == address(0)) revert Errors.InvalidToken();
 
@@ -273,10 +275,8 @@ contract RewardHarvester is Ownable2Step {
         emit DefaultTokenUpdated(_newToken);
     }
 
-    /**
-     * @dev    Internal to set the RewardSwapper contract
-     *     @param  _newSwapper  address  RewardSwapper address
-     */
+    //    @dev    Internal to set the RewardSwapper contract
+    //    @param  _newSwapper : address : RewardSwapper address
     function _setRewardSwapper(address _newSwapper) internal {
         if (_newSwapper == address(0)) revert Errors.InvalidAddress();
 
@@ -285,10 +285,8 @@ contract RewardHarvester is Ownable2Step {
         emit SetRewardSwapper(_newSwapper);
     }
 
-    /**
-     * @dev    Internal to set the operator
-     *     @param  _operator  address  Token address
-     */
+    //    @dev    Internal to set the operator
+    //    @param  _operator : address : token address
     function _setOperator(address _operator) internal {
         if (_operator == address(0)) revert Errors.InvalidOperator();
 
@@ -297,10 +295,8 @@ contract RewardHarvester is Ownable2Step {
         emit SetOperator(_operator);
     }
 
-    /**
-     * @dev    Internal to set the active timer duration
-     *     @param  _duration  uint256  Timer duration
-     */
+    //    @dev    Internal to set the active timer duration
+    //    @param  _duration : uint256 : timer duration
     function _setActiveTimerDuration(uint256 _duration) internal {
         if (_duration < MINIMUM_ACTIVE_TIMER) {
             revert Errors.InvalidTimerDuration();

@@ -9,15 +9,15 @@ import {Errors} from "./libraries/Errors.sol";
 contract RewardHarvesterClaim is Ownable2Step, ReentrancyGuard {
     uint256 public constant MAX_FEE = 100_000;
 
-    // Harvester fee
+    // RewardHarvester fee
     // Only single fee tracking for this version, but can be expanded for varying fees by token later
     uint256 public fee;
-    // Harvester contract
+    // RewardHarvester contract
     RewardHarvester public immutable harvester;
 
-    //-----------------------//
-    //        Events         //
-    //-----------------------//
+    //------------------------//
+    //        Events          //
+    //------------------------//
     event SetFee(uint256 fee);
 
     //-----------------------//
@@ -31,42 +31,39 @@ contract RewardHarvesterClaim is Ownable2Step, ReentrancyGuard {
         _setFee(_fee);
     }
 
-    //-----------------------//
-    //   External Functions  //
-    //-----------------------//
+    //------------------------//
+    //   External Functions   //
+    //------------------------//
 
-    /**
-     * @notice Claim rewards based on the specified metadata
-     *     @dev    Currently only perform direct claiming for this version
-     *     @param  _token        address    Token to claim rewards
-     *     @param  _account      address    Account to claim rewards
-     *     @param  _amount       uint256    Amount of rewards to claim
-     *     @param  _merkleProof  bytes32[]  Merkle proof of the claim
-     */
-    function claim(address _token, address _account, uint256 _amount, bytes32[] calldata _merkleProof)
-        external
-        nonReentrant
-    {
+    //    @notice Claim rewards based on the specified metadata
+    //    @dev    Currently only perform direct claiming for this version
+    //    @param  _token       : address   : token to claim rewards
+    //    @param  _account     : address   : account to claim rewards
+    //    @param  _amount      : uint256   : amount of rewards to claim
+    //    @param  _merkleProof : bytes32[] : merkle proof of the claim
+    function claim(
+        address _token,
+        address _account,
+        uint256 _amount,
+        bytes32[] calldata _merkleProof
+    ) external nonReentrant {
         // Receiver is currently set to the user itself for this version of claimer
-        // but can be directed to the claimer first in the future for additional actions (ie. swaps, locks)
+        // but can be routed to the claimer first in the future for additional actions (ie. swaps, locks)
         harvester.claim(_token, _account, _amount, _merkleProof, fee, _account);
     }
 
-    /**
-     * @notice Change fee
-     *     @param  _newFee  uint256  New fee to set
-     */
+    //    @notice Change fee
+    //    @param  _newFee : uint256 : new fee
     function changeFee(uint256 _newFee) external onlyOwner {
         _setFee(_newFee);
     }
 
-    //-----------------------//
-    //   Internal Functions  //
-    //-----------------------//
-    /**
-     * @dev    Internal to set the fee
-     *     @param  _newFee  uint256  Token address
-     */
+    //------------------------//
+    //   Internal Functions   //
+    //------------------------//
+
+    // @dev    Internal to set the fee
+    //    @param  _newFee  uint256  Token address
     function _setFee(uint256 _newFee) internal {
         if (_newFee > MAX_FEE) revert Errors.InvalidFee();
 

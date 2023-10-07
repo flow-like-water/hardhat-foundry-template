@@ -13,11 +13,11 @@ contract BribeMarket is AccessControl, ReentrancyGuard {
     uint256 public constant MAX_PERIODS = 10;
     uint256 public constant MAX_PERIOD_DURATION = 30 days;
 
-    // Name (identifier) of the market, also used for rewardIdentifiers
+    // Name (identifier) of the market, also used for RewardIdentifiers
     // Immutable after initialization
     string public PROTOCOL;
 
-    // Address of the bribeVault
+    // Address of the BribeVault
     // Immutable after initialization
     address public BRIBE_VAULT;
 
@@ -44,11 +44,21 @@ contract BribeMarket is AccessControl, ReentrancyGuard {
 
     bool private _initialized;
 
-    event Initialize(address bribeVault, address admin, string protocol, uint256 maxPeriods, uint256 periodDuration);
+    event Initialize(
+        address bribeVault,
+        address admin,
+        string protocol,
+        uint256 maxPeriods,
+        uint256 periodDuration
+    );
     event GrantTeamRole(address teamMember);
     event RevokeTeamRole(address teamMember);
     event SetProposals(bytes32[] proposals, uint256 indexed deadline);
-    event SetProposalsById(uint256 indexed proposalIndex, bytes32[] proposals, uint256 indexed deadline);
+    event SetProposalsById(
+        uint256 indexed proposalIndex,
+        bytes32[] proposals,
+        uint256 indexed deadline
+    );
     event SetProposalsByAddress(bytes32[] proposals, uint256 indexed deadline);
     event AddWhitelistedTokens(address[] tokens);
     event RemoveWhitelistedTokens(address[] tokens);
@@ -58,7 +68,10 @@ contract BribeMarket is AccessControl, ReentrancyGuard {
     event RemoveBlacklistedVoters(address[] voters);
 
     modifier onlyAuthorized() {
-        if (!hasRole(DEFAULT_ADMIN_ROLE, msg.sender) && !hasRole(TEAM_ROLE, msg.sender)) revert Errors.NotAuthorized();
+        if (
+            !hasRole(DEFAULT_ADMIN_ROLE, msg.sender) &&
+            !hasRole(TEAM_ROLE, msg.sender)
+        ) revert Errors.NotAuthorized();
         _;
     }
 
@@ -68,14 +81,12 @@ contract BribeMarket is AccessControl, ReentrancyGuard {
         _initialized = true;
     }
 
-    /**
-     * @notice Initialize the contract
-     *     @param  _bribeVault  Bribe vault address
-     *     @param  _admin       Admin address
-     *     @param  _protocol    Protocol name
-     *     @param  _maxPeriods  Maximum number of periods
-     *     @param  _periodDuration  Period duration
-     */
+    //    @notice Initialize the contract
+    //    @param  _bribeVault     : address : BribeVault address
+    //    @param  _admin          : address : admin address
+    //    @param  _protocol       : string  : protocol name
+    //    @param  _maxPeriods     : uint256 : maximum number of periods
+    //    @param  _periodDuration : uint256 : period duration
     function initialize(
         address _bribeVault,
         address _admin,
@@ -99,15 +110,22 @@ contract BribeMarket is AccessControl, ReentrancyGuard {
 
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
 
-        emit Initialize(_bribeVault, _admin, _protocol, _maxPeriods, _periodDuration);
+        emit Initialize(
+            _bribeVault,
+            _admin,
+            _protocol,
+            _maxPeriods,
+            _periodDuration
+        );
     }
 
-    /**
-     * @notice Set multiple proposals with arbitrary bytes data as identifiers under the same deadline
-     *     @param  _identifiers  bytes[]  identifiers
-     *     @param  _deadline     uint256  Proposal deadline
-     */
-    function setProposals(bytes[] calldata _identifiers, uint256 _deadline) external onlyAuthorized {
+    //    @notice Set multiple proposals with arbitrary bytes data as identifiers under the same deadline
+    //    @param  _identifiers : bytes[] : identifiers
+    //    @param  _deadline    : uint256 : proposal deadline
+    function setProposals(
+        bytes[] calldata _identifiers,
+        uint256 _deadline
+    ) external onlyAuthorized {
         uint256 identifiersLength = _identifiers.length;
         if (identifiersLength == 0) revert Errors.InvalidAddress();
         if (_deadline < block.timestamp) revert Errors.InvalidDeadline();
@@ -128,16 +146,15 @@ contract BribeMarket is AccessControl, ReentrancyGuard {
         emit SetProposals(proposalIds, _deadline);
     }
 
-    /**
-     * @notice Set proposals based on the index of the proposal and the number of choices
-     *     @param  _proposalIndex  uint256  Proposal index
-     *     @param  _choiceCount    uint256  Number of choices to be voted for
-     *     @param  _deadline       uint256  Proposal deadline
-     */
-    function setProposalsById(uint256 _proposalIndex, uint256 _choiceCount, uint256 _deadline)
-        external
-        onlyAuthorized
-    {
+    //    @notice Set proposals based on the index of the proposal and the number of choices
+    //    @param  _proposalIndex : uint256 : proposal index
+    //    @param  _choiceCount   : uint256 : number of choices to be voted for
+    //    @param  _deadline      : uint256 : proposal deadline
+    function setProposalsById(
+        uint256 _proposalIndex,
+        uint256 _choiceCount,
+        uint256 _deadline
+    ) external onlyAuthorized {
         if (_choiceCount == 0) revert Errors.InvalidChoiceCount();
         if (_deadline < block.timestamp) revert Errors.InvalidDeadline();
 
@@ -155,12 +172,13 @@ contract BribeMarket is AccessControl, ReentrancyGuard {
         emit SetProposalsById(_proposalIndex, proposalIds, _deadline);
     }
 
-    /**
-     * @notice Set multiple proposals for many addresses under the same deadline
-     *     @param  _addresses  address[]  addresses (eg. gauge addresses)
-     *     @param  _deadline   uint256    Proposal deadline
-     */
-    function setProposalsByAddress(address[] calldata _addresses, uint256 _deadline) external onlyAuthorized {
+    //    @notice Set multiple proposals for many addresses under the same deadline
+    //    @param  _addresses  : address[] : addresses (eg. gauge addresses)
+    //    @param  _deadline   : uint256   : proposal deadline
+    function setProposalsByAddress(
+        address[] calldata _addresses,
+        uint256 _deadline
+    ) external onlyAuthorized {
         uint256 addressesLen = _addresses.length;
         if (addressesLen == 0) revert Errors.InvalidAddress();
         if (_deadline < block.timestamp) revert Errors.InvalidDeadline();
@@ -181,33 +199,34 @@ contract BribeMarket is AccessControl, ReentrancyGuard {
         emit SetProposalsByAddress(proposalIds, _deadline);
     }
 
-    /**
-     * @notice Grant the team role to an address
-     *     @param  _teamMember  address  Address to grant the teamMember role
-     */
-    function grantTeamRole(address _teamMember) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    //    @notice Grant the teamMember role to the specified address
+    //    @param  _teamMember : address : address to grant the teamMember role
+    function grantTeamRole(
+        address _teamMember
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (_teamMember == address(0)) revert Errors.InvalidAddress();
         _grantRole(TEAM_ROLE, _teamMember);
 
         emit GrantTeamRole(_teamMember);
     }
 
-    /**
-     * @notice Revoke the team role from an address
-     *     @param  _teamMember  address  Address to revoke the teamMember role
-     */
-    function revokeTeamRole(address _teamMember) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    //    @notice Revoke the team role from an address
+    //    @param  _teamMember : address : address to revoke the teamMember role
+    //
+    function revokeTeamRole(
+        address _teamMember
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (!hasRole(TEAM_ROLE, _teamMember)) revert Errors.NotTeamMember();
         _revokeRole(TEAM_ROLE, _teamMember);
 
         emit RevokeTeamRole(_teamMember);
     }
 
-    /**
-     * @notice Set maximum periods for submitting bribes ahead of time
-     *     @param  _periods  uint256  Maximum periods
-     */
-    function setMaxPeriods(uint256 _periods) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    //    @notice Set maximum periods for submitting bribes ahead of time
+    //    @param  _periods : uint256 : maximum periods
+    function setMaxPeriods(
+        uint256 _periods
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (_periods == 0 || _periods > MAX_PERIODS) {
             revert Errors.InvalidMaxPeriod();
         }
@@ -217,11 +236,11 @@ contract BribeMarket is AccessControl, ReentrancyGuard {
         emit SetMaxPeriods(_periods);
     }
 
-    /**
-     * @notice Set period duration per voting round
-     *     @param  _periodDuration  uint256  Period duration
-     */
-    function setPeriodDuration(uint256 _periodDuration) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    //    @notice Set the period duration for each voting round
+    //    @param  _periodDuration : uint256 : period duration
+    function setPeriodDuration(
+        uint256 _periodDuration
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (_periodDuration == 0 || _periodDuration > MAX_PERIOD_DURATION) {
             revert Errors.InvalidPeriodDuration();
         }
@@ -231,13 +250,13 @@ contract BribeMarket is AccessControl, ReentrancyGuard {
         emit SetPeriodDuration(_periodDuration);
     }
 
-    /**
-     * @notice Add whitelisted tokens
-     *     @param  _tokens  address[]  Tokens to add to whitelist
-     */
-    function addWhitelistedTokens(address[] calldata _tokens) external onlyAuthorized {
+    //    @notice Add whitelisted tokens
+    //    @param  _tokens : address[] : tokens to add to the whitelist
+    function addWhitelistedTokens(
+        address[] calldata _tokens
+    ) external onlyAuthorized {
         uint256 tLen = _tokens.length;
-        for (uint256 i; i < tLen;) {
+        for (uint256 i; i < tLen; ) {
             if (_tokens[i] == address(0)) revert Errors.InvalidAddress();
             if (_tokens[i] == BRIBE_VAULT) {
                 revert Errors.NoWhitelistBribeVault();
@@ -248,7 +267,9 @@ contract BribeMarket is AccessControl, ReentrancyGuard {
 
             // Perform creation op for the unordered key set
             _allWhitelistedTokens.push(_tokens[i]);
-            indexOfWhitelistedToken[_tokens[i]] = _allWhitelistedTokens.length - 1;
+            indexOfWhitelistedToken[_tokens[i]] =
+                _allWhitelistedTokens.length -
+                1;
 
             unchecked {
                 ++i;
@@ -258,21 +279,23 @@ contract BribeMarket is AccessControl, ReentrancyGuard {
         emit AddWhitelistedTokens(_tokens);
     }
 
-    /**
-     * @notice Remove whitelisted tokens
-     *     @param  _tokens  address[]  Tokens to remove from whitelist
-     */
-    function removeWhitelistedTokens(address[] calldata _tokens) external onlyAuthorized {
+    //    @notice Remove whitelisted tokens
+    //    @param  _tokens : address[] : tokens to remove from whitelist
+    function removeWhitelistedTokens(
+        address[] calldata _tokens
+    ) external onlyAuthorized {
         uint256 tLen = _tokens.length;
-        for (uint256 i; i < tLen;) {
+        for (uint256 i; i < tLen; ) {
             if (!isWhitelistedToken(_tokens[i])) {
                 revert Errors.TokenNotWhitelisted();
             }
 
             // Perform deletion op for the unordered key set
-            // by swapping the affected row to the end/tail of the list
+            // by swapping the affected row to the end of the list
             uint256 index = indexOfWhitelistedToken[_tokens[i]];
-            address tail = _allWhitelistedTokens[_allWhitelistedTokens.length - 1];
+            address tail = _allWhitelistedTokens[
+                _allWhitelistedTokens.length - 1
+            ];
 
             _allWhitelistedTokens[index] = tail;
             indexOfWhitelistedToken[tail] = index;
@@ -292,16 +315,20 @@ contract BribeMarket is AccessControl, ReentrancyGuard {
      * @notice Add blacklisted voters
      *     @param  _voters  address[]  Voters to add to blacklist
      */
-    function addBlacklistedVoters(address[] calldata _voters) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function addBlacklistedVoters(
+        address[] calldata _voters
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         uint256 vLen = _voters.length;
-        for (uint256 i; i < vLen;) {
+        for (uint256 i; i < vLen; ) {
             if (_voters[i] == address(0)) revert Errors.InvalidAddress();
             if (isBlacklistedVoter(_voters[i])) {
                 revert Errors.VoterBlacklisted();
             }
 
             _allBlacklistedVoters.push(_voters[i]);
-            indexOfBlacklistedVoter[_voters[i]] = _allBlacklistedVoters.length - 1;
+            indexOfBlacklistedVoter[_voters[i]] =
+                _allBlacklistedVoters.length -
+                1;
 
             unchecked {
                 ++i;
@@ -311,21 +338,23 @@ contract BribeMarket is AccessControl, ReentrancyGuard {
         emit AddBlacklistedVoters(_voters);
     }
 
-    /**
-     * @notice Remove blacklisted voters
-     *     @param  _voters  address[]  Voters to remove from blacklist
-     */
-    function removeBlacklistedVoters(address[] calldata _voters) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    //    @notice Remove blacklisted voters
+    //    @param  _voters : address[] : voters to remove from blacklist
+    function removeBlacklistedVoters(
+        address[] calldata _voters
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         uint256 vLen = _voters.length;
-        for (uint256 i; i < vLen;) {
+        for (uint256 i; i < vLen; ) {
             if (!isBlacklistedVoter(_voters[i])) {
                 revert Errors.VoterNotBlacklisted();
             }
 
             // Perform deletion op for the unordered key set
-            // by swapping the affected row to the end/tail of the list
+            // by swapping the affected row to the end of the list
             uint256 index = indexOfBlacklistedVoter[_voters[i]];
-            address tail = _allBlacklistedVoters[_allBlacklistedVoters.length - 1];
+            address tail = _allBlacklistedVoters[
+                _allBlacklistedVoters.length - 1
+            ];
 
             _allBlacklistedVoters[index] = tail;
             indexOfBlacklistedVoter[tail] = index;
@@ -341,14 +370,12 @@ contract BribeMarket is AccessControl, ReentrancyGuard {
         emit RemoveBlacklistedVoters(_voters);
     }
 
-    /**
-     * @notice Deposit bribe for a proposal (ERC20 tokens only)
-     *     @param  _proposal          bytes32  Proposal
-     *     @param  _token             address  Token
-     *     @param  _amount            uint256  Token amount
-     *     @param  _maxTokensPerVote  uint256  Max amount of token per vote
-     *     @param  _periods           uint256  Number of periods the bribe will be valid
-     */
+    //    @notice Deposit bribe for a proposal (ERC20 tokens only)
+    //    @param  _proposal         : bytes32 : proposal
+    //    @param  _token            : address : token
+    //    @param  _amount           : uint256 : token amount
+    //    @param  _maxTokensPerVote : uint256 : max amount of token per vote
+    //    @param  _periods          : uint256 : number of periods the bribe will be valid
     function depositBribe(
         bytes32 _proposal,
         address _token,
@@ -356,19 +383,25 @@ contract BribeMarket is AccessControl, ReentrancyGuard {
         uint256 _maxTokensPerVote,
         uint256 _periods
     ) external nonReentrant {
-        _depositBribe(_proposal, _token, _amount, _maxTokensPerVote, _periods, 0, "");
+        _depositBribe(
+            _proposal,
+            _token,
+            _amount,
+            _maxTokensPerVote,
+            _periods,
+            0,
+            ""
+        );
     }
 
-    /**
-     * @notice Deposit bribe for a proposal (ERC20 tokens only) using permit
-     *     @param  _proposal          bytes32  Proposal
-     *     @param  _token             address  Token
-     *     @param  _amount            uint256  Token amount
-     *     @param  _maxTokensPerVote  uint256  Max amount of token per vote
-     *     @param  _periods           uint256  Number of periods the bribe will be valid
-     *     @param  _permitDeadline    uint256  Deadline for permit signature
-     *     @param  _signature         bytes    Permit signature
-     */
+    //    @notice Deposit bribe for a proposal (ERC20 tokens only) using permit
+    //    @param  _proposal         : bytes32 : Proposal
+    //    @param  _token            : address : Token
+    //    @param  _amount           : uint256 : Token amount
+    //    @param  _maxTokensPerVote : uint256 : Max amount of token per vote
+    //    @param  _periods          : uint256 : Number of periods the bribe will be valid
+    //    @param  _permitDeadline   : uint256 : Deadline for permit signature
+    //    @param  _signature        : bytes   : Permit signature
     function depositBribeWithPermit(
         bytes32 _proposal,
         address _token,
@@ -378,75 +411,82 @@ contract BribeMarket is AccessControl, ReentrancyGuard {
         uint256 _permitDeadline,
         bytes memory _signature
     ) external nonReentrant {
-        _depositBribe(_proposal, _token, _amount, _maxTokensPerVote, _periods, _permitDeadline, _signature);
+        _depositBribe(
+            _proposal,
+            _token,
+            _amount,
+            _maxTokensPerVote,
+            _periods,
+            _permitDeadline,
+            _signature
+        );
     }
 
-    /**
-     * @notice Return the list of currently whitelisted token addresses
-     */
+    //    @notice Return the list of current whitelisted token addresses
     function getWhitelistedTokens() external view returns (address[] memory) {
         return _allWhitelistedTokens;
     }
 
-    /**
-     * @notice Return the list of currently blacklisted voter addresses
-     */
+    //    @notice Return the list of current blacklisted voter addresses
     function getBlacklistedVoters() external view returns (address[] memory) {
         return _allBlacklistedVoters;
     }
 
-    /**
-     * @notice Get bribe from BribeVault
-     *     @param  _proposal          bytes32  Proposal
-     *     @param  _proposalDeadline  uint256  Proposal deadline
-     *     @param  _token             address  Token
-     *     @return bribeToken         address  Token address
-     *     @return bribeAmount        address  Token amount
-     */
-    function getBribe(bytes32 _proposal, uint256 _proposalDeadline, address _token)
-        external
-        view
-        returns (address bribeToken, uint256 bribeAmount)
-    {
+    //    @notice Get bribe from BribeVault
+    //    @param  _proposal         : bytes32 : proposal
+    //    @param  _proposalDeadline : uint256 : proposal deadline
+    //    @param  _token            : address : token
+    //    @return bribeToken        : address : token address
+    //    @return bribeAmount       : address : token amount
+    function getBribe(
+        bytes32 _proposal,
+        uint256 _proposalDeadline,
+        address _token
+    ) external view returns (address bribeToken, uint256 bribeAmount) {
         (bribeToken, bribeAmount) = IBribeVault(BRIBE_VAULT).getBribe(
-            keccak256(abi.encodePacked(address(this), _proposal, _proposalDeadline, _token))
+            keccak256(
+                abi.encodePacked(
+                    address(this),
+                    _proposal,
+                    _proposalDeadline,
+                    _token
+                )
+            )
         );
     }
 
-    /**
-     * @notice Return whether the specified token is whitelisted
-     *     @param  _token  address Token address to be checked
-     */
+    //    @notice Check whether the specified token address has been whitelisted
+    //    @param  _token : address : token address to be checked
     function isWhitelistedToken(address _token) public view returns (bool) {
         if (_allWhitelistedTokens.length == 0) {
             return false;
         }
 
-        return indexOfWhitelistedToken[_token] != 0 || _allWhitelistedTokens[0] == _token;
+        return
+            indexOfWhitelistedToken[_token] != 0 ||
+            _allWhitelistedTokens[0] == _token;
     }
 
-    /**
-     * @notice Return whether the specified address is blacklisted
-     *     @param  _voter  address Voter address to be checked
-     */
+    //    @notice Check whether the specified voter address has been blacklisted
+    //    @param  _voter : address : voter address to be checked
     function isBlacklistedVoter(address _voter) public view returns (bool) {
         if (_allBlacklistedVoters.length == 0) {
             return false;
         }
 
-        return indexOfBlacklistedVoter[_voter] != 0 || _allBlacklistedVoters[0] == _voter;
+        return
+            indexOfBlacklistedVoter[_voter] != 0 ||
+            _allBlacklistedVoters[0] == _voter;
     }
 
-    /**
-     * @notice Deposit bribe for a proposal (ERC20 tokens only) with optional permit parameters
-     *     @param  _proposal          bytes32  Proposal
-     *     @param  _token             address  Token
-     *     @param  _amount            uint256  Token amount
-     *     @param  _maxTokensPerVote  uint256  Max amount of token per vote
-     *     @param  _periods           uint256  Number of periods the bribe will be valid
-     *     @param  _permitDeadline    uint256  Deadline for permit signature
-     *     @param  _signature         bytes    Permit signature
-     */
+    //    @notice Deposit bribe for a proposal (ERC20 tokens only) with optional permit parameters
+    //    @param  _proposal         : bytes32 : proposal
+    //    @param  _token            : address : token
+    //    @param  _amount           : uint256 : token amount
+    //    @param  _maxTokensPerVote : uint256 : max amount of token per vote
+    //    @param  _periods          : uint256 : number of periods the bribe will be valid
+    //    @param  _permitDeadline   : uint256 : deadline for permit signature
+    //    @param  _signature        : bytes   : permit signature
     function _depositBribe(
         bytes32 _proposal,
         address _token,
@@ -481,11 +521,9 @@ contract BribeMarket is AccessControl, ReentrancyGuard {
         );
     }
 
-    /**
-     * @notice Set a single proposal
-     *     @param  _proposal  bytes32  Proposal
-     *     @param  _deadline  uint256  Proposal deadline
-     */
+    //    @notice Set a single proposal
+    //    @param  _proposal : bytes32 : proposal
+    //    @param  _deadline : uint256 : proposal deadline
     function _setProposal(bytes32 _proposal, uint256 _deadline) internal {
         proposalDeadlines[_proposal] = _deadline;
     }
