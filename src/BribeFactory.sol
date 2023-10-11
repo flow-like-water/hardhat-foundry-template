@@ -30,8 +30,8 @@ contract BribeFactory is Ownable2Step {
         _;
     }
 
-    // @param  _implementation : address : address of the implementation contract
-    // @param  _bribeVault     : address : address of the bribe vault
+    // @param  _implementation : address : address of the Implementation contract
+    // @param  _bribeVault     : address : address of the BribeVault
     constructor(address _implementation, address _bribeVault) {
         _setBribeMarketImplementation(_implementation);
         _setBribeVault(_bribeVault);
